@@ -149,8 +149,8 @@ class TrussSolver(CTk):
                 for point in e_forces:
                     start_joint = point[0]
                     end_joint = point[1]
-                    distance_y = int(self.joint_data[end_joint][1]) - int(self.joint_data[start_joint][1])
-                    distance_x = int(self.joint_data[end_joint][0]) - int(self.joint_data[start_joint][0])
+                    distance_y = float(self.joint_data[point.replace(joint, '')][1]) - float(self.joint_data[joint][1])
+                    distance_x = float(self.joint_data[point.replace(joint, '')][0]) - float(self.joint_data[joint][0])
                     if distance_x < 0: angles.append(math.atan(distance_y/distance_x) + math.pi)
                     elif distance_x > 0: angles.append(math.atan(distance_y/distance_x))
                     else:
@@ -158,14 +158,14 @@ class TrussSolver(CTk):
                         else: angles.append(-math.pi/2)
                     # Reduce number of unknowns by joint
                     for i in range(len(sorted_letters)):
-                        if end_joint == sorted_letters[i][0]:
-                            sorted_letters[i][1] - 1
+                        if point.replace(joint, '') == sorted_letters[i][0]:
+                            sorted_letters[i][1] -= 1
                 # Left side of force equilibrium equations
                 left_x = [math.cos(angles[0]), math.cos(angles[1])]
                 left_y = [math.sin(angles[0]), math.sin(angles[1])]
                 # Right side of force equilibrium equations
-                right_x = -(float(self.joint_data[joint][2]) + int(self.joint_data[joint][4]))
-                right_y = -(float(self.joint_data[joint][3]) + int(self.joint_data[joint][5]))
+                right_x = -(float(self.joint_data[joint][2]) + float(self.joint_data[joint][4]))
+                right_y = -(float(self.joint_data[joint][3]) + float(self.joint_data[joint][5]))
                 a = np.array([left_x, left_y]) # Left side of the equation system
                 b = np.array([right_x, right_y]) # Right side of the equation system
                 R = np.linalg.solve(a, b).tolist() # Solution of forces
@@ -178,24 +178,22 @@ class TrussSolver(CTk):
                             result.pop(0)
             else:
                 angles = []
-                start_joint = e_forces[0]
-                end_joint = e_forces[1]
-                distance_y = int(self.joint_data[end_joint][1]) - int(self.joint_data[start_joint][1])
-                distance_x = int(self.joint_data[end_joint][0]) - int(self.joint_data[start_joint][0])
+                distance_y = float(self.joint_data[e_forces[0].replace(joint, '')][1]) - float(self.joint_data[joint][1])
+                distance_x = float(self.joint_data[e_forces[0].replace(joint, '')][0]) - float(self.joint_data[joint][0])
                 if distance_x < 0: angles.append(math.atan(distance_y/distance_x) + math.pi)
                 elif distance_x > 0: angles.append(math.atan(distance_y/distance_x))
                 else:
                     if distance_y > 0: angles.append(math.pi/2)
                     else: angles.append(-math.pi/2)
                 for i in range(len(sorted_letters)):
-                    if start_joint == sorted_letters[i][0]: sorted_letters[i][1] -= 1
+                    if e_forces[0].replace(joint, '') == sorted_letters[i][0]: sorted_letters[i][1] -= 1
                 if angles[0] == 0:
                     a = np.array([[math.cos(angles[0])]]) # Left side of the equation system
-                    b = np.array([-(int(self.joint_data[joint][2]) + int(self.joint_data[joint][4]))]) # Right side of the equation system
+                    b = np.array([-(float(self.joint_data[joint][2]) + float(self.joint_data[joint][4]))]) # Right side of the equation system
                     result = np.linalg.solve(a, b)[0] # Reaction solutions R1, R2 and R3
                 else:
                     a = np.array([[math.sin(angles[0])]]) # Left side of the equation system
-                    b = np.array([-(int(self.joint_data[joint][3]) + int(self.joint_data[joint][5]))]) # Right side of the equation system
+                    b = np.array([-(float(self.joint_data[joint][3]) + float(self.joint_data[joint][5]))]) # Right side of the equation system
                     R = np.linalg.solve(a, b)[0] # Reaction solutions R1, R2 and R3
                     result = R
                     elements_forces = (e_forces[0], R)
@@ -205,11 +203,12 @@ class TrussSolver(CTk):
             # TODO: Debug
             for idx, keys in enumerate(self.joint_data.keys()):
                 if type(self.joint_data[keys][4]) == str and type(self.joint_data[keys][5]) == str:
-                    force_x[idx] = int(self.joint_data[keys][4])
-                    force_y[idx] = int(self.joint_data[keys][5])
+                    force_x[idx] = float(self.joint_data[keys][4])
+                    force_y[idx] = float(self.joint_data[keys][5])
                 else:
                     force_x[idx] = self.joint_data[keys][4]
                     force_y[idx] = self.joint_data[keys][5]
+
             for point in e_forces:
                 if len(e_forces) == 2:
                     for i, j in enumerate(elements_forces):
@@ -223,21 +222,22 @@ class TrussSolver(CTk):
                         if point.replace(joint,"") == joint_letter:
                             force_x[idx] = force_x[idx]-(result*math.cos(angles[0]))
                             force_y[idx] = force_y[idx]-(result*math.sin(angles[0]))
-            
+
             for idx, keys in enumerate(self.joint_data.keys()):
                 self.joint_data[keys][4] = force_x[idx]
                 self.joint_data[keys][5] = force_y[idx]
             sorted_letters.pop(0)
             sorted_letters = sorted(sorted_letters, key=operator.itemgetter(1))
+        return values_to_store
 
     def plot_truss_and_solve(self):
         # Plot joint
-
-        self.solve_truss()
-        for joint1, joint2 in self.pair_elements:
-            x_coordinates = self.joint_data[joint1][0], self.joint_data[joint2][0]
-            y_coordinates = self.joint_data[joint1][1], self.joint_data[joint2][1]
+        solve_value = self.solve_truss()
+        for i, (joint1, joint2) in enumerate(self.pair_elements):
+            x_coordinates = int(self.joint_data[joint1][0]), int(self.joint_data[joint2][0])
+            y_coordinates = int(self.joint_data[joint1][1]), int(self.joint_data[joint2][1])
             plt.plot(x_coordinates, y_coordinates, "ro-")
+            plt.text(mean(x_coordinates), mean(y_coordinates), str(round(solve_value[i], 2)), fontsize=12)
             plt.text(x_coordinates[0], y_coordinates[0], joint1, fontsize=12, color = "b", fontweight="bold")
             plt.text(x_coordinates[1], y_coordinates[1], joint2, fontsize=12, color = "b", fontweight="bold")
         plt.show()
