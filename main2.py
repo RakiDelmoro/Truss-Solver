@@ -47,7 +47,7 @@ class TrussSolver(CTk):
 
     def truss_main_frame(self):
         self.geometry('500x500')
-        self.bg_image = CTkImage(light_image=Image.open("background.jpg"), size=(500, 500))
+        self.bg_image = CTkImage(light_image=Image.open("Truss-Solver/background.jpg"), size=(500, 500))
         self.bg_label = CTkLabel(self, image=self.bg_image)
         self.bg_label.place(relx=0.5, rely=0.5, anchor=CENTER)
         self.truss_elements()
