@@ -13,7 +13,7 @@ class TrussSolver(CTk):
     def __init__(self):
         super().__init__()
         self.title("Truss Me!")
-        self.geometry("400x300")
+        self.geometry("700x700")
         self.description_container = CTkFrame(self, width=400, height=300, fg_color='black')
         self.description_container.place(relx=0.5, rely=0.5, anchor=CENTER)
         self.text_1 = CTkLabel(self.description_container, text="Truss Me! ", font=("Arial", 20, "bold"), fg_color='black', text_color='white')
@@ -30,32 +30,52 @@ class TrussSolver(CTk):
         self.text_4.place(relx=0.5, rely=0.8, anchor=CENTER)
         self.start_button = CTkButton(self, text="START", fg_color="deep sky blue", bg_color='deep sky blue', text_color='black', font=('Arial', 15, 'bold'), width=100, command=lambda: [self.start_button.destroy(), self.description_container.destroy(), self.truss_main_frame()])
         self.start_button.place(relx=0.5, rely=0.95, anchor=S)
-        self.pair_elements = []
-        self.joint_data = {}
-
+    
     def restart(self):
         self.start_button.destroy()
         self.description_container.destroy()
         self.truss_main_frame()
         self.scrollable_table._parent_frame.destroy()
         self.data_table.destroy()
-        self.pair_elements = []
-        self.joint_data = {}
 
     def exit(self):
         self.quit()
 
     def truss_main_frame(self):
-        self.geometry('500x500')
-        self.bg_image = CTkImage(light_image=Image.open("background.jpg"), size=(500, 500))
+        self.pair_elements = []
+        self.joint_data = {}
+        self.geometry('700x700')
+        self.bg_image = CTkImage(light_image=Image.open("background.jpg"), size=(700, 700))
         self.bg_label = CTkLabel(self, image=self.bg_image)
         self.bg_label.place(relx=0.5, rely=0.5, anchor=CENTER)
-        self.truss_elements()
 
+        # Welcome Message and Instructions
+        self.instructions_text = (
+            "\nWelcome to the 2D Truss Solver Program!\n\n"
+            "Instructions:\n"
+            "1. When entering the Start and End Nodes, please use only letters (e.g., A, B, C).\n"
+            "2. The program will prompt you to input the X, Y coordinates for each joint.\n"
+            "3. Indicate support reactions (Rx, Ry) for each joint. A '1' means there is a support:\n"
+            "   - '1' in both Rx and Ry means a pinned support.\n"
+            "   - '1' in only one of Rx or Ry means a roller support.\n"
+            "4. Enter forces (Fx, Fy) acting on each joint. Use '0' if no force is applied.\n")
+
+        self.instructions_label = CTkLabel(self, text=self.instructions_text, font=("Arial", 15,'bold'), fg_color='#bae6ff', text_color='black', wraplength=480)
+        self.instructions_label.place(relx=0.5, rely=0.5, anchor=CENTER)  # Centered vertically at 30% of the height
+        # Next Button
+        self.next_button = CTkButton(self, text="NEXT", fg_color='#bae6ff', text_color='black', font=('Arial', 20, 'bold'), command=self.proceed_to_input)
+        self.next_button.place(relx=0.5, rely=0.8, anchor=CENTER)
+        # Restart Button
         self.restart_button = CTkButton(self, text="RESTART", fg_color='black', width=50, font=('Arial', 15, 'bold'), command=self.restart)
         self.restart_button.place(relx=0.9, rely=0.98, anchor=S)
+        # Exit Button
         self.exit_button = CTkButton(self, text="EXIT", fg_color='black', width=50, font=('Arial', 15, 'bold'), command=self.exit)
         self.exit_button.place(relx=0.065, rely=0.98, anchor=S)
+
+    def proceed_to_input(self):
+        self.instructions_label.destroy()  # Remove instructions
+        self.next_button.destroy()          # Remove next button
+        self.truss_elements()  
 
     def truss_elements(self):
         # Create a scrollable frame
@@ -96,6 +116,7 @@ class TrussSolver(CTk):
             if element.isdigit():
                 messagebox.showerror("Input Error", "Error: Please enter only alphabetical values for joint labels.")
                 return
+
         self.apply_elements.destroy()
         self.gather_pair_truss_elements()
         self.truss_data_table()
@@ -130,7 +151,7 @@ class TrussSolver(CTk):
             for entry in input_entries:
                 value = entry.get()
                 row_data.append(value)
-            if not row_data[0].isalpha() or any(not value.lstrip('-').isdigit() for value in row_data[1:]):
+            if not row_data[0].isalpha() and any(not value.lstrip('-').isdigit() for value in row_data[1:]):
                 messagebox.showerror("Input Error", "Error: The Joint value must be letters and the rest must be numerical.")
                 return    
         self.apply_button.destroy()
@@ -299,19 +320,71 @@ class TrussSolver(CTk):
                 sorted_letters = sorted(sorted_letters, key=operator.itemgetter(1))
         except:
             messagebox.showerror("Truss infrastructure", "Invalid truss infrastructure create again.")
+            values_to_store = []
             self.restart()
         return values_to_store
+    
+    def show_scrollable_info(self, title, message):
+        # Create a new top-level window
+        info_window = CTkToplevel()
+        info_window.title(title)
+        info_window.geometry("400x300")
+        # Create a scrollable text frame
+        text_frame = CTkScrollableFrame(info_window, width=350, height=250)
+        text_frame.pack(padx=10, pady=10, expand=True, fill="both")
+        # Create a text label inside the scrollable frame
+        text_label = CTkLabel(text_frame, text=message, wraplength=330, justify="left",font=("Arial", 14))
+        text_label.pack(padx=10, pady=10)
+        # Add a close button
+        close_button = CTkButton(info_window, text="Close", command=info_window.destroy)
+        close_button.pack(pady=10)
+
+    def show_computation_dialog(self, forces):
+        # Create a string representation of the computation results
+        computation_results = "\nComputation Results:\n"
+        for i, force in enumerate(forces): computation_results += f"Force in Member {i+1}: {round(force, 2)} N\n"
+        # Create a message box with options
+        result = messagebox.askquestion("Computation Results", computation_results + "\nDo you want to show the computation details?", icon='info')
+        if result == 'yes':
+            # Show detailed computation (you can modify this to include your detailed steps)
+            detailed_computation = "\nDetailed Computation:\n"
+            for i, force in enumerate(forces):
+                detailed_computation += f"\nStep {i+1}: Calculate the force in Member {i+1}\n"
+                detailed_computation += f"Using the equilibrium equations at each joint:\n"
+                detailed_computation += f"ΣFx = 0 and ΣFy = 0 (Forces in the x and y directions must sum to zero at equilibrium)\n"
+                detailed_computation += f"Assume the force in member {i+1} (F{i+1}) is acting along the direction of the member.\n"
+                detailed_computation += f"Then we calculate F{i+1} using the method of joints:\n"
+                detailed_computation += f"F{i+1} = √(ΣFx² + ΣFy²)\n"
+                detailed_computation += f"Where ΣFx and ΣFy are the sums of forces in the x and y directions at the joint.\n"
+                detailed_computation += f"Resulting force in Member {i+1} = {round(force, 2)} N\n"
+            # messagebox.showinfo("Computation Details", detailed_computation)
+            self.show_scrollable_info("Computation Details", detailed_computation)
+            restart_button = CTkButton(self, text="RESTART", fg_color="black", text_color='white', font=('Arial', 15, 'bold'), width=100, command=self.restart)
+            restart_button.place(relx=0.459, rely=0.95, anchor=CENTER)
+        else:
+            exit_result = messagebox.askquestion("Exit/Retry", "Do you want to exit or try again?", icon='warning')
+            if exit_result == 'yes': self.exit()  # Exit if user selects 'Exit'
+            else: self.restart()  # Restart if user selects 'Try Again'
 
     def plot_truss_and_solve(self):
         solve_value = self.solve_truss()
+        if len(solve_value) == 0: return # check if truss infrastructure is solvable
+
+        self.scrollable_table._parent_frame.destroy()
+        self.data_table.destroy()
+        fig, ax = plt.subplots(figsize=(3, 3))
         for i, (start_joint, end_joint) in enumerate(self.pair_elements):
             x_coordinates = int(self.joint_data[start_joint][0]), int(self.joint_data[end_joint][0])
             y_coordinates = int(self.joint_data[start_joint][1]), int(self.joint_data[end_joint][1])
-            plt.plot(x_coordinates, y_coordinates, "ro-")
+            ax.plot(x_coordinates, y_coordinates, "ro-")
             force_text = str(round(solve_value[i], 2))
-            plt.text(mean(x_coordinates), mean(y_coordinates), force_text, fontsize=10, color="g")
-            plt.text(x_coordinates[0], y_coordinates[0], start_joint, fontsize=12, color = "b", fontweight="bold")
-            plt.text(x_coordinates[1], y_coordinates[1], end_joint, fontsize=12, color = "b", fontweight="bold")
-        plt.show()
+            ax.text(mean(x_coordinates), mean(y_coordinates), force_text, fontsize=10, color="g")
+            ax.text(x_coordinates[0], y_coordinates[0], start_joint, fontsize=12, color = "b", fontweight="bold")
+            ax.text(x_coordinates[1], y_coordinates[1], end_joint, fontsize=12, color = "b", fontweight="bold")
+        canvas = FigureCanvasTkAgg(fig, self)
+        canvas.draw()
+        canvas.get_tk_widget().place(relx=0.5, rely=0.5, anchor=CENTER)
+        canvas.get_tk_widget().configure(width=650, height=500)
+        self.show_computation_dialog(solve_value)
 
 TrussSolver().mainloop()
